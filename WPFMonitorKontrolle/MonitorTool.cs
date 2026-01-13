@@ -2,6 +2,8 @@
 {
     using System.Management;
     using System.Runtime.InteropServices;
+    using System.Windows;
+    using System.Windows.Interop;
 
     public class MonitorTool
     {
@@ -126,6 +128,25 @@
 
             return "Überlappend / Benutzerdefiniert";
         }
+
+        internal static MONITORINFO GetCurrentMonitor(Window window)
+        {
+            var hwnd = new WindowInteropHelper(window).Handle;
+
+            // Fenster-Mittelpunkt
+            var source = PresentationSource.FromVisual(window);
+            var dpi = source.CompositionTarget.TransformToDevice;
+
+            var center = window.PointToScreen(new Point(window.ActualWidth / 2, window.ActualHeight / 2));
+
+            var hMonitor = NativeMethods.MonitorFromPoint(new POINT { X = (int)center.X, Y = (int)center.Y }, NativeMethods.MONITORDEFAULTTONEAREST);
+
+            var info = new MONITORINFO { cbSize = Marshal.SizeOf<MONITORINFO>() };
+            NativeMethods.GetMonitorInfo(hMonitor, ref info);
+
+            return info;
+        }
+
     }
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi)]
@@ -152,6 +173,8 @@
 
     public static class NativeMethods
     {
+        public const int MONITORDEFAULTTONEAREST = 2;
+
         [DllImport("user32.dll", CharSet = CharSet.Unicode)]
         internal static extern bool EnumDisplayDevices(string lpDevice, uint iDevNum, ref DisplayDevice lpDisplayDevice, uint dwFlags);
 
@@ -165,8 +188,36 @@
 
         [DllImport("shcore.dll", CharSet = CharSet.Unicode)]
         internal static extern int GetDpiForMonitor(IntPtr hmonitor, MonitorDpiType dpiType, out uint dpiX, out uint dpiY);
+
+        [DllImport("user32.dll")]
+        internal static extern IntPtr MonitorFromPoint(POINT pt, int flags);
+
+        [DllImport("user32.dll")]
+        internal static extern bool GetMonitorInfo(IntPtr hMonitor, ref MONITORINFO info);
     }
-    
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct POINT
+    {
+        public int X;
+        public int Y;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct MONITORINFO
+    {
+        public int cbSize;
+        public RECT rcMonitor;
+        public RECT rcWork;
+        public int dwFlags;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct RECT
+    {
+        public int Left, Top, Right, Bottom;
+    }
+
     public class WmiMonitor
     {
         public string InstanceName { get; set; }

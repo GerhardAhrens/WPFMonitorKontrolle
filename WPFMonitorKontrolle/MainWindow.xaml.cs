@@ -17,6 +17,7 @@ namespace WPFMonitorKontrolle
 {
     using System.ComponentModel;
     using System.Runtime.CompilerServices;
+    using System.Runtime.InteropServices;
     using System.Windows;
     using System.Windows.Controls;
 
@@ -26,6 +27,7 @@ namespace WPFMonitorKontrolle
     public partial class MainWindow : Window, INotifyPropertyChanged
     {
         public event PropertyChangedEventHandler PropertyChanged;
+        private IntPtr _lastMonitor;
 
         public MainWindow()
         {
@@ -34,6 +36,10 @@ namespace WPFMonitorKontrolle
             WeakEventManager<Window, CancelEventArgs>.AddHandler(this, "Closing", this.OnWindowClosing);
 
             this.WindowTitel = "Minimal WPF Template";
+
+            this.LocationChanged += this.OnLocationChanged;
+            this.SizeChanged += (_, _) => this.OnEnsureVisible(this);
+
             this.DataContext = this;
         }
 
@@ -56,7 +62,6 @@ namespace WPFMonitorKontrolle
         private void OnLoaded(object sender, RoutedEventArgs e)
         {
             WeakEventManager<Button, RoutedEventArgs>.AddHandler(this.BtnCloseApplication, "Click", this.OnCloseApplication);
-            var monitors = MonitorTool.GetMonitors();
         }
 
         private void OnCloseApplication(object sender, RoutedEventArgs e)
@@ -78,6 +83,42 @@ namespace WPFMonitorKontrolle
                 e.Cancel = true;
             }
         }
+
+        private void OnLocationChanged(object sender, EventArgs e)
+        {
+            var monitor = MonitorTool.GetCurrentMonitor(this);
+            var current = NativeMethods.MonitorFromPoint(new POINT { X = monitor.rcMonitor.Left + 1, Y = monitor.rcMonitor.Top + 1 }, NativeMethods.MONITORDEFAULTTONEAREST);
+
+            if (current != _lastMonitor)
+            {
+                this._lastMonitor = current;
+                this.OnMonitorChanged();
+                this.OnEnsureVisible(this);
+            }
+        }
+
+        private void OnMonitorChanged()
+        {
+            Console.WriteLine("Monitor gewechselt");
+            var monitors = MonitorTool.GetMonitors();
+        }
+
+        private void OnEnsureVisible(Window window)
+        {
+            var center = window.PointToScreen(
+                new Point(window.Width / 2, window.Height / 2));
+
+            var hMonitor = NativeMethods.MonitorFromPoint(new POINT { X = (int)center.X, Y = (int)center.Y }, NativeMethods.MONITORDEFAULTTONEAREST);
+
+            var info = new MONITORINFO { cbSize = Marshal.SizeOf<MONITORINFO>() };
+            NativeMethods.GetMonitorInfo(hMonitor, ref info);
+
+            var work = info.rcWork;
+
+            window.Left = Math.Max(work.Left, Math.Min(window.Left, work.Right - window.Width));
+            window.Top = Math.Max(work.Top, Math.Min(window.Top, work.Bottom - window.Height));
+        }
+
 
         #region INotifyPropertyChanged implementierung
         protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = "")
