@@ -9,22 +9,31 @@
         public static List<WmiMonitor> GetMonitorNames()
         {
             var list = new List<WmiMonitor>();
-            var searcher = new ManagementObjectSearcher(@"root\wmi", "SELECT * FROM WmiMonitorID");
 
-            foreach (ManagementObject obj in searcher.Get())
+            try
             {
-                list.Add(new WmiMonitor
+                var searcher = new ManagementObjectSearcher(@"root\wmi", "SELECT * FROM WmiMonitorID");
+
+                foreach (ManagementObject obj in searcher.Get())
                 {
-                    InstanceName = obj["InstanceName"].ToString(),
-                    Manufacturer = Decode((ushort[])obj["ManufacturerName"]),
-                    Model = Decode((ushort[])obj["UserFriendlyName"]),
-                    Serial = Decode((ushort[])obj["SerialNumberID"]),
-                });
-            }
+                    list.Add(new WmiMonitor
+                    {
+                        InstanceName = obj["InstanceName"].ToString(),
+                        Manufacturer = Decode((ushort[])obj["ManufacturerName"]),
+                        Model = Decode((ushort[])obj["UserFriendlyName"]),
+                        Serial = Decode((ushort[])obj["SerialNumberID"]),
+                    });
+                }
 
-            if (list.Count == 1)
+                if (list.Count == 1)
+                {
+                    list[0].InstanceName = list[0].InstanceName.Replace("DISPLAY", "DISPLAY1");
+                }
+            }
+            catch (Exception ex)
             {
-                list[0].InstanceName = list[0].InstanceName.Replace("DISPLAY","DISPLAY1");
+                string errorText = ex.Message;
+                throw;
             }
 
             return list;

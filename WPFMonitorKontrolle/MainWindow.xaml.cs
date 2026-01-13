@@ -56,7 +56,7 @@ namespace WPFMonitorKontrolle
         private void OnLoaded(object sender, RoutedEventArgs e)
         {
             WeakEventManager<Button, RoutedEventArgs>.AddHandler(this.BtnCloseApplication, "Click", this.OnCloseApplication);
-            MonitorTool.GetMonitors();
+            var monitors = MonitorTool.GetMonitors();
         }
 
         private void OnCloseApplication(object sender, RoutedEventArgs e)
